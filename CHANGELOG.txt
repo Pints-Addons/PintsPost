@@ -1,0 +1,12 @@
+Pint's Postal - Changelog
+
+v1.0
+- First public release.
+- Contacts book by the To: box (your alts, recently mailed, friends, guild) and name autocomplete.
+- Open All by mail type (each kind of auction mail, or other mail with money or items); never opens COD mail.
+- Tick boxes on the inbox with Open and Return buttons; Shift-click for a range, Ctrl-click for one sender.
+- Shift-click a mail to take everything, Ctrl-click to return it, Alt-click a bag item to attach it.
+- Expiry icon on each mail - will it come back or be deleted? Click it to do that now.
+- Copy a mail's text, Forward a mail and its items.
+- Quick-attach buttons for cloth, leather, herbs, ore and bars, enchanting and elemental materials.
+- Subject fills in with the gold amount, trades blocked at the mailbox, gold taken reported on close.

@@ -1,0 +1,11 @@
+## Interface: 11508, 11509, 16001
+## Title: |cffd4a017Pint's|r Postal
+## Notes: A better mailbox: contacts and autocomplete, Open All by mail type, tick-box open/return, Shift/Ctrl/Alt-click shortcuts, expiry icons, copy and forward, quick-attach, trade block. /post
+## Author: Jake (Pint's Add-ons, built with Claude)
+## Version: 1.0
+## X-Curse-Project-ID: 1781020
+## X-License: GPL-3.0
+## SavedVariables: PintsPostDB
+## OptionalDeps: PintsAlts
+
+PintsPost.lua
