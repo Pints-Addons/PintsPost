@@ -31,7 +31,7 @@ _G.PintsPost = PM
 local DEFAULTS = {
 	contacts = true, autocomplete = true, autofill = false, useAlts = true, useRecent = true, useFriends = true, useGuild = true,
 	openAll = true, select = true, express = true, expiry = true, copy = true, forward = true, quick = true,
-	wire = true, tradeBlock = true, rake = true,
+	wire = true, tradeBlock = false, rake = true,
 	keepFree = 1, speed = 0.5,
 	f_cancelled = true, f_expired = true, f_outbid = true, f_success = true, f_won = true, f_other = true,
 	recent = {}, alts = {}, quickTo = {},
@@ -820,6 +820,8 @@ ev:SetScript("OnEvent", function(_, e, a1)
 		PintsPostDB = PintsPostDB or {}
 		db = PintsPostDB
 		for k, v in pairs(DEFAULTS) do if db[k] == nil then db[k] = (type(v) == "table") and {} or v end end
+		-- trades at the mailbox are allowed by default now (switched off once for everyone; tick it again in settings)
+		if not db.tradeV2 then db.tradeV2 = true; db.tradeBlock = false end
 		PM.db = db
 	elseif e == "PLAYER_LOGIN" then
 		-- your full name: on WoW Forever that's first and second name ("Rain Mon"), which is what the To: box needs
