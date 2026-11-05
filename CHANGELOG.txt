@@ -1,5 +1,8 @@
 Pint's Postal - Changelog
 
+v1.1.2
+- Contacts: long Guild and Friends lists go a page at a time - scroll with the mouse wheel, or use next / previous.
+
 v1.1.1
 - WoW Forever: the contacts book (alts, recently mailed, friends, guild) uses full names, so the To: box gets the right
   person; each alt saves itself again in full at its next login.

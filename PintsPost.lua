@@ -279,7 +279,9 @@ local function ClassName(e)
 	if e[3] then name = name .. "  |cff888888" .. e[3] .. "|r" end
 	return name
 end
-local function ShowMenu(anchor, page)
+local PAGE = 30          -- names per page for long lists (guild, friends); the mouse wheel or the arrows move through
+local function ShowMenu(anchor, page, start)
+	start = math.max(1, start or 1)
 	if not menu then
 		menu = CreateFrame("Frame", "PintsPostContacts", UIParent, "BackdropTemplate")
 		menu:SetFrameStrata("FULLSCREEN_DIALOG"); menu:SetClampedToScreen(true); menu:EnableMouse(true)
@@ -293,8 +295,20 @@ local function ShowMenu(anchor, page)
 	local rows = {}
 	local function head(t) rows[#rows + 1] = { head = t } end
 	local function list(l, limit) for k, e in ipairs(l) do if limit and k > limit then rows[#rows + 1] = { more = true }; break end rows[#rows + 1] = { name = e[1], text = ClassName(e) } end end
-	if page == "friends" then head("Friends"); list(Friends()); rows[#rows + 1] = { back = true }
-	elseif page == "guild" then head("Guild"); list(Guild(), 40); rows[#rows + 1] = { back = true }
+	-- a long list a page at a time: "^" back a page, "v" on to the next
+	local function paged(title, l)
+		local n = #l
+		if start > n then start = math.max(1, n - PAGE + 1) end
+		local last = math.min(n, start + PAGE - 1)
+		head(title .. (n > PAGE and ("  |cff888888" .. start .. "-" .. last .. " of " .. n .. "|r") or ""))
+		if start > 1 then rows[#rows + 1] = { jump = math.max(1, start - PAGE), text = "   |cff66ccff^  previous|r" } end
+		for k = start, last do local e = l[k]; rows[#rows + 1] = { name = e[1], text = ClassName(e) } end
+		if last < n then rows[#rows + 1] = { jump = last + 1, text = "   |cff66ccffv  next (" .. (n - last) .. " more)|r" } end
+		menu.paged = { page = page, start = start, n = n }
+	end
+	menu.paged = nil
+	if page == "friends" then paged("Friends", Friends()); rows[#rows + 1] = { back = true }
+	elseif page == "guild" then paged("Guild", Guild()); rows[#rows + 1] = { back = true }
 	else
 		head("Alts"); local a = Alts(); if #a == 0 then rows[#rows + 1] = { note = "log each alt on once" } else list(a) end
 		head("Recently mailed"); local r = Recent(); if #r == 0 then rows[#rows + 1] = { note = "nobody yet" } else list(r, 20) end
@@ -315,10 +329,12 @@ local function ShowMenu(anchor, page)
 		elseif r.note then b.text:SetText("   |cff888888" .. r.note .. "|r"); b:EnableMouse(false)
 		elseif r.more then b.text:SetText("   |cff888888...|r"); b:EnableMouse(false)
 		elseif r.back then b.text:SetText("<  Back"); b:EnableMouse(true)
+		elseif r.jump then b.text:SetText(r.text); b:EnableMouse(true)
 		else b.text:SetText(r.page and r.text or ("   " .. r.text)); b:EnableMouse(true) end
 		b:SetScript("OnClick", function(self)
 			local row = self.row
-			if row.page then ShowMenu(anchor, row.page)
+			if row.jump then ShowMenu(anchor, page, row.jump)
+			elseif row.page then ShowMenu(anchor, row.page)
 			elseif row.back then ShowMenu(anchor)
 			elseif row.name then SendMailNameEditBox:SetText(row.name); SendMailNameEditBox:SetCursorPosition(#row.name); menu:Hide(); SendMailSubjectEditBox:SetFocus() end
 		end)
@@ -326,6 +342,14 @@ local function ShowMenu(anchor, page)
 	end
 	for i = #rows + 1, #menu.items do menu.items[i]:Hide() end
 	menu:SetSize(196, #rows * 16 + 12)
+	-- mouse wheel: scroll a long list a few names at a time
+	menu:EnableMouseWheel(true)
+	menu:SetScript("OnMouseWheel", function(self, d)
+		local p = self.paged
+		if not p or p.n <= PAGE then return end
+		local s2 = math.max(1, math.min(p.n - PAGE + 1, p.start - d * 5))
+		if s2 ~= p.start then ShowMenu(anchor, p.page, s2) end
+	end)
 	menu:ClearAllPoints(); menu:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 2, 0)
 	menu:Show()
 end
