@@ -366,9 +366,16 @@ local function ShowMenu(anchor, page, start)
 end
 
 local completing = false
+local typedLen = 0
 local function Autocomplete(box, user)
+	-- the box filled or cleared by the game or another add-on: start counting from there
+	if not user and not completing then typedLen = #(box:GetText() or "") end
 	if not user or completing or not db.autocomplete then return end
 	local text = box:GetText()
+	-- deleting (Backspace / Delete) never fills a name back in, so a wrong first letter can be rubbed out
+	local shorter = #text <= typedLen
+	typedLen = #text
+	if shorter then return end
 	if #text < 1 or box:GetCursorPosition() ~= #text then return end
 	local low = text:lower()
 	for _, name in ipairs(Candidates()) do
@@ -682,7 +689,12 @@ local function BuildSend()
 	local auto
 	Hook("SendMailFrame_CanSend", function()
 		if not db.wire then return end
-		local money = SendMailMoney and MoneyInputFrame_GetCopper(SendMailMoney) or 0
+		-- the money typed in (WoW Forever's money box has its own way of saying)
+		local money = 0
+		if SendMailMoney then
+			if MoneyInputFrame_GetCopper then money = MoneyInputFrame_GetCopper(SendMailMoney) or 0
+			elseif SendMailMoney.GetAmount then money = SendMailMoney:GetAmount() or 0 end
+		end
 		local subj = SendMailSubjectEditBox:GetText()
 		if money > 0 and (subj == "" or subj == auto) then
 			auto = GetCoinText(money, " ")

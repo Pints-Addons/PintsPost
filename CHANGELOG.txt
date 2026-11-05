@@ -1,5 +1,9 @@
 Pint's Postal - Changelog
 
+v1.1.5
+- To: box: Backspace no longer fills the name back in, so a wrong first letter can be deleted.
+- WoW Forever: fixed an error when opening the Send Mail tab (the money-in-subject helper).
+
 v1.1.4
 - Trades and charter requests at the mailbox are no longer turned away by default (tick "Block trades while at the
   mailbox" in the settings to turn it back on).
