@@ -1,5 +1,8 @@
 Pint's Postal - Changelog
 
+v1.1.3
+- WoW Forever: money shows with the gold, silver and copper icons (the game's own coin text showed bare digits).
+
 v1.1.2
 - Contacts: long Guild and Friends lists go a page at a time - scroll with the mouse wheel, or use next / previous.
 

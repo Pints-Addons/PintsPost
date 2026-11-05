@@ -11,6 +11,17 @@
 --   Takings     - how much gold the mailbox gave you, printed when you close it
 -- Settings: the gear button at the top right of the mailbox, or /post.
 local ADDON = ...
+-- coins drawn with the money icons (WoW Forever's own coin text came out as bare digits: 6s 64c showed as "664")
+local GetCoinTextureString = function(v)
+	v = math.floor((tonumber(v) or 0) + 0.5)
+	local neg = v < 0; if neg then v = -v end
+	local g, s, c = math.floor(v / 10000), math.floor(v / 100) % 100, v % 100
+	local out = {}
+	if g > 0 then out[#out + 1] = g .. "|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:2:0|t" end
+	if s > 0 then out[#out + 1] = s .. "|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:2:0|t" end
+	if c > 0 or #out == 0 then out[#out + 1] = c .. "|TInterface\\MoneyFrame\\UI-CopperIcon:0:0:2:0|t" end
+	return (neg and "-" or "") .. table.concat(out, " ")
+end
 -- Compatibility: WoW Forever runs on the modern game client, where these older functions moved or were renamed.
 local IsAddOnLoaded = IsAddOnLoaded or (C_AddOns and C_AddOns.IsAddOnLoaded)
 
