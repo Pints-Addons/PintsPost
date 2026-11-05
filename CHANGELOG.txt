@@ -1,5 +1,12 @@
 Pint's Postal - Changelog
 
+v1.1.1
+- WoW Forever: the contacts book (alts, recently mailed, friends, guild) uses full names, so the To: box gets the right
+  person; each alt saves itself again in full at its next login.
+- WoW Forever: the inbox buttons (Open All / Open / Return) sit between Prev and Next again, the settings gear is
+  beside the close button, and each part of the mailbox sets itself up separately, so one problem can't hide the rest.
+- The contacts list closes with the mailbox.
+
 v1.1
 - Works on WoW Forever (the modern game client). Classic Era is unchanged.
 - Uses the modern item functions where the old ones are gone.

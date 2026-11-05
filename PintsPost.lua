@@ -197,6 +197,12 @@ end
 ---------------------------------------------------------------- contacts
 local function RememberMe()
 	db.alts[Key()] = db.alts[Key()] or {}
+	-- WoW Forever names have a second name ("Pint Waterboy"); alts saved before that was known went in under the first
+	-- name alone (so every "Pint" was one entry): clear those once so each character saves itself again in full
+	if ME:find(" ") and not db.fullNames then
+		db.fullNames = true
+		for name in pairs(db.alts[Key()]) do if not name:find(" ") then db.alts[Key()][name] = nil end end
+	end
 	local _, cls = UnitClass("player")
 	db.alts[Key()][ME] = { cls, UnitLevel("player") }
 end
@@ -246,7 +252,7 @@ local function Guild()
 end
 local function AddRecent(name)
 	if not name or name == "" then return end
-	name = name:gsub("^%l", string.upper)
+	name = name:gsub("^%l", string.upper):gsub(" %l", string.upper)     -- "rain mon" -> "Rain Mon"
 	local list = db.recent[Key()] or {}
 	db.recent[Key()] = list
 	for i = #list, 1, -1 do if list[i]:lower() == name:lower() then table.remove(list, i) end end
@@ -438,6 +444,8 @@ end
 ---------------------------------------------------------------- inbox decorations
 local checks, selected = {}, {}
 local lastChecked
+-- hook a Blizzard function only if this game has it (WoW Forever's mailbox renamed or dropped some)
+local function Hook(name, fn) if type(_G[name]) == "function" then hooksecurefunc(name, fn); return true end end
 local function IndexOf(row) return ((InboxFrame.pageNum or 1) - 1) * (INBOXITEMS_TO_DISPLAY or 7) + row end
 local function UpdateInbox()
 	if not InboxFrame or not InboxFrame:IsVisible() then return end
@@ -544,13 +552,20 @@ local function BuildInbox()
 		blizz:Hide(); blizz:SetAlpha(0); blizz:EnableMouse(false)
 		hooksecurefunc(blizz, "Show", function(self) self:Hide() end)
 	end
-	-- our three buttons sit centred between the "Prev" and "Next" labels
+	-- our three buttons sit centred between the "Prev" and "Next" page buttons (named differently on WoW Forever)
+	local function Pager(word)
+		local g = _G["Inbox" .. word .. "PageButton"]; if g then return g end
+		if InboxFrame[word .. "PageButton"] then return InboxFrame[word .. "PageButton"] end
+		for k, v in pairs(InboxFrame) do
+			if type(k) == "string" and k:find(word) and type(v) == "table" and v.GetObjectType and v:GetObjectType() == "Button" then return v end
+		end
+		for _, c in ipairs({ InboxFrame:GetChildren() }) do local n = c.GetName and c:GetName(); if n and n:find(word) then return c end end
+	end
+	local prevB, nextB = Pager("Prev"), Pager("Next")
 	local row = CreateFrame("Frame", nil, InboxFrame); row:SetSize(170, 22)
-	if InboxPrevPageButton and InboxNextPageButton then
-		row:SetPoint("CENTER", InboxFrame, "BOTTOMLEFT", 0, 0)
-		row:ClearAllPoints()
-		row:SetPoint("LEFT", InboxPrevPageButton, "RIGHT", 0, 0); row:SetPoint("RIGHT", InboxNextPageButton, "LEFT", 0, 0)
-	else row:SetPoint("BOTTOM", InboxFrame, "BOTTOM", 0, 98) end
+	if prevB and nextB then
+		row:SetPoint("LEFT", prevB, "RIGHT", 0, 0); row:SetPoint("RIGHT", nextB, "LEFT", 0, 0)
+	else row:SetPoint("BOTTOM", MailFrame, "BOTTOM", 0, 40) end
 	open:SetSize(62, 22)
 	open:SetPoint("RIGHT", row, "CENTER", -26, 0)
 	open:SetText("Open All"); open:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -586,7 +601,7 @@ local function BuildInbox()
 		end
 		go()
 	end)
-	hooksecurefunc("InboxFrame_Update", UpdateInbox)
+	if not Hook("InboxFrame_Update", UpdateInbox) then InboxFrame:HookScript("OnShow", UpdateInbox) end
 end
 
 ---------------------------------------------------------------- send tab decorations
@@ -600,6 +615,10 @@ local function BuildSend()
 	book:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Contacts"); GameTooltip:AddLine("Your alts, people you've mailed, friends and guild", 1, 1, 1, true); GameTooltip:Show() end)
 	book:SetScript("OnLeave", function() GameTooltip:Hide() end)
 	PM.book = book
+	-- the contacts list closes with the mailbox (WoW Forever doesn't always send the "mail closed" event)
+	local function CloseMenu() if menu then menu:Hide() end end
+	SendMailFrame:HookScript("OnHide", CloseMenu)
+	MailFrame:HookScript("OnHide", CloseMenu)
 	SendMailNameEditBox:HookScript("OnTextChanged", function(self, user) Autocomplete(self, user) end)
 	-- quick attach column, outside the right edge of the mailbox
 	PM.quick = {}
@@ -626,7 +645,7 @@ local function BuildSend()
 	end
 	-- money subject
 	local auto
-	hooksecurefunc("SendMailFrame_CanSend", function()
+	Hook("SendMailFrame_CanSend", function()
 		if not db.wire then return end
 		local money = SendMailMoney and MoneyInputFrame_GetCopper(SendMailMoney) or 0
 		local subj = SendMailSubjectEditBox:GetText()
@@ -638,7 +657,9 @@ local function BuildSend()
 		end
 	end)
 	-- remember who you mail
-	hooksecurefunc("SendMail", function(name) AddRecent(name) end)
+	if not Hook("SendMail", function(name) AddRecent(name) end) and C_Mail and C_Mail.SendMail then
+		hooksecurefunc(C_Mail, "SendMail", function(name) AddRecent(name) end)
+	end
 	SendMailFrame:HookScript("OnShow", function()
 		if db.autofill and db.last and db.last[Key()] and SendMailNameEditBox:GetText() == "" then SendMailNameEditBox:SetText(db.last[Key()]) end
 		PM.book:SetShown(db.contacts)
@@ -766,18 +787,24 @@ ev:SetScript("OnEvent", function(_, e, a1)
 		for k, v in pairs(DEFAULTS) do if db[k] == nil then db[k] = (type(v) == "table") and {} or v end end
 		PM.db = db
 	elseif e == "PLAYER_LOGIN" then
-		REALM, FACTION, ME = GetRealmName(), UnitFactionGroup("player"), UnitName("player")
+		-- your full name: on WoW Forever that's first and second name ("Rain Mon"), which is what the To: box needs
+		REALM, FACTION, ME = GetRealmName(), UnitFactionGroup("player"), (GetUnitName and GetUnitName("player", false)) or UnitName("player")
 		RememberMe()
 		if PM.PostalLoaded() then Print("Postal is on too - /post off-postal to switch it off, then /reload.") end
 	elseif e == "PLAYER_LEVEL_UP" then RememberMe()
 	elseif e == "MAIL_SHOW" then
 		if not built then
 			built = true
-			local ok, err = pcall(function() BuildInbox(); BuildSend(); BuildOpen() end)
-			if not ok then Print("couldn't set up the mailbox: " .. tostring(err)) end
-			-- settings gear, top right of the mailbox
+			-- each part on its own, so one that doesn't fit this game's mailbox doesn't take the others with it
+			for _, part in ipairs({ { "inbox", BuildInbox }, { "send", BuildSend }, { "open mail", BuildOpen } }) do
+				local ok, err = pcall(part[2])
+				if not ok then Print("couldn't set up the " .. part[1] .. " part of the mailbox: " .. tostring(err)) end
+			end
+			-- settings gear, beside the mailbox's close button
 			local gear = CreateFrame("Button", nil, MailFrame)
-			gear:SetSize(20, 20); gear:SetPoint("TOPRIGHT", MailFrame, "TOPRIGHT", -58, -14)
+			local close = MailFrameCloseButton or MailFrame.CloseButton
+			gear:SetSize(24, 24); gear:SetFrameLevel(MailFrame:GetFrameLevel() + 10)
+			if close then gear:SetPoint("RIGHT", close, "LEFT", -4, 0) else gear:SetPoint("TOPRIGHT", MailFrame, "TOPRIGHT", -40, -2) end
 			gear:SetNormalTexture("Interface\\Icons\\INV_Misc_Gear_01"); gear:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
 			gear:SetScript("OnClick", PM.ToggleOptions)
 			gear:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Pint's Postal settings"); GameTooltip:Show() end)
