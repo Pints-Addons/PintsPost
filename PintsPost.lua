@@ -11,6 +11,9 @@
 --   Takings     - how much gold the mailbox gave you, printed when you close it
 -- Settings: the gear button at the top right of the mailbox, or /post.
 local ADDON = ...
+-- Compatibility: WoW Forever runs on the modern game client, where these older functions moved or were renamed.
+local IsAddOnLoaded = IsAddOnLoaded or (C_AddOns and C_AddOns.IsAddOnLoaded)
+
 local PM = {}
 _G.PintsPost = PM
 

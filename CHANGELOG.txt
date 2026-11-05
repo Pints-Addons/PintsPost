@@ -1,5 +1,9 @@
 Pint's Postal - Changelog
 
+v1.1
+- Works on WoW Forever (the modern game client). Classic Era is unchanged.
+- Uses the modern item functions where the old ones are gone.
+
 v1.0
 - First public release.
 - Contacts book by the To: box (your alts, recently mailed, friends, guild) and name autocomplete.
