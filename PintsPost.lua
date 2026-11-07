@@ -146,8 +146,22 @@ end
 
 ---------------------------------------------------------------- the opener (used by Open All and Select)
 local queue, running, onDone = {}, false, nil
+local ids = {}             -- queue index -> which mail it was (sender, subject, days left) when it was queued
+-- A mail emptied of its money and items is deleted, and every mail after it moves up one place: the place we were
+-- working on then holds the NEXT mail. Shift-clicking one mail kept going through all the ones after it. So each
+-- place remembers which mail it was, and a different mail there means that one is done.
+local function MailID(i)
+	local _, _, sender, subject, _, _, days = Header(i)
+	return (sender or "?") .. "\1" .. (subject or "?"), days
+end
+local function SameMail(i, want)
+	if not want then return true end
+	local k, days = MailID(i)
+	return k == want[1] and math.abs((days or 0) - (want[2] or 0)) < 0.0005
+end
 local skippedFull = 0
 local startMoney
+local function Pop() ids[#queue] = nil; table.remove(queue) end
 local function Stop(msg)
 	running = false
 	wipe(queue)
@@ -172,17 +186,17 @@ function Step()
 		Stop("done" .. (#bits > 0 and (" - " .. table.concat(bits, ", ")) or "") .. ".")
 		return
 	end
-	if i > NumItems() then table.remove(queue); return Step() end
+	if i > NumItems() or not SameMail(i, ids[#queue]) then Pop(); return Step() end
 	local _, _, _, _, money, cod, _, itemCount = Header(i)
-	if (cod or 0) > 0 then table.remove(queue); return Step() end
+	if (cod or 0) > 0 then Pop(); return Step() end
 	if (money or 0) > 0 then TakeInboxMoney(i); return Next() end
 	if (itemCount or 0) > 0 then
-		if FreeSlots() <= (db.keepFree or 0) then skippedFull = skippedFull + 1; table.remove(queue); return Step() end
+		if FreeSlots() <= (db.keepFree or 0) then skippedFull = skippedFull + 1; Pop(); return Step() end
 		for a = 1, ATTACHMENTS_MAX_RECEIVE or 16 do
 			if GetInboxItem(i, a) then TakeInboxItem(i, a); return Next() end
 		end
 	end
-	table.remove(queue)
+	Pop()
 	return Step()
 end
 -- open a set of mail indexes (highest first, so nothing shifts under us)
@@ -190,7 +204,8 @@ function PM.Open(list, done)
 	if running then Stop("stopped."); return end
 	wipe(queue)
 	table.sort(list)
-	for _, i in ipairs(list) do queue[#queue + 1] = i end
+	wipe(ids)
+	for _, i in ipairs(list) do queue[#queue + 1] = i; local k, d = MailID(i); ids[#queue] = { k, d } end
 	if #queue == 0 then Print("nothing to open."); if done then done() end; return end
 	running, skippedFull, startMoney, onDone = true, 0, GetMoney(), done
 	if PM.openBtn then PM.openBtn:SetText("Stop") end
