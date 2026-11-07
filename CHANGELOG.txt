@@ -1,5 +1,9 @@
 Pint's Postal - Changelog
 
+v1.1.7
+- WoW Forever: sending money fills an empty Subject with the amount as you type it ("5 Silver"), and takes it out
+  again if you clear the money.
+
 v1.1.6
 - Shift-clicking a mail takes just that mail. It used to carry on through every mail after it (an emptied mail is
   deleted and the next one moves into its place). Open All works as before.

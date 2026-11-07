@@ -700,24 +700,53 @@ local function BuildSend()
 		b:SetScript("OnLeave", function() GameTooltip:Hide() end)
 		PM.quick[k] = b
 	end
-	-- money subject
+	-- money subject: the amount goes into an empty subject as you type it (and back out if you clear the money)
 	local auto
-	Hook("SendMailFrame_CanSend", function()
-		if not db.wire then return end
-		-- the money typed in (WoW Forever's money box has its own way of saying)
-		local money = 0
-		if SendMailMoney then
-			if MoneyInputFrame_GetCopper then money = MoneyInputFrame_GetCopper(SendMailMoney) or 0
-			elseif SendMailMoney.GetAmount then money = SendMailMoney:GetAmount() or 0 end
-		end
-		local subj = SendMailSubjectEditBox:GetText()
+	-- the money typed in: the game's own reader where it has one, else the gold / silver / copper boxes themselves
+	local function Typed()
+		local m = SendMailMoney
+		if not m then return 0 end
+		if MoneyInputFrame_GetCopper then local ok, v = pcall(MoneyInputFrame_GetCopper, m); if ok and type(v) == "number" then return v end end
+		if m.GetAmount then local ok, v = pcall(m.GetAmount, m); if ok and type(v) == "number" then return v end end
+		local g, sv, c = 0, 0, 0
+		local function Val(box) return box and tonumber(box:GetText() or "") or 0 end
+		local n = m:GetName() or "SendMailMoney"
+		g = Val(m.gold or m.GoldBox or _G[n .. "Gold"])
+		sv = Val(m.silver or m.SilverBox or _G[n .. "Silver"])
+		c = Val(m.copper or m.CopperBox or _G[n .. "Copper"])
+		return g * 10000 + sv * 100 + c
+	end
+	local function MoneySubject()
+		if not db.wire or not SendMailSubjectEditBox then return end
+		local money = Typed()
+		local subj = SendMailSubjectEditBox:GetText() or ""
 		if money > 0 and (subj == "" or subj == auto) then
-			auto = GetCoinText(money, " ")
-			if subj ~= auto then SendMailSubjectEditBox:SetText(auto) end
-		elseif money == 0 and subj ~= "" and subj == auto then
+			local text
+			if GetCoinText then text = GetCoinText(money, " ")
+			else
+				local g, sv, c = math.floor(money / 10000), math.floor(money / 100) % 100, money % 100
+				local t = {}
+				if g > 0 then t[#t + 1] = g .. " Gold" end
+				if sv > 0 then t[#t + 1] = sv .. " Silver" end
+				if c > 0 then t[#t + 1] = c .. " Copper" end
+				text = table.concat(t, " ")
+			end
+			if subj ~= text then auto = text; SendMailSubjectEditBox:SetText(text) else auto = text end
+		elseif money == 0 and auto and subj == auto then
 			auto = nil; SendMailSubjectEditBox:SetText("")
 		end
-	end)
+	end
+	Hook("SendMailFrame_CanSend", MoneySubject)
+	-- (WoW Forever doesn't always run the game's check as you type: watch the money boxes themselves too)
+	local function Watch(f, depth)
+		if not f or depth > 3 then return end
+		if f.IsObjectType and f:IsObjectType("EditBox") and not f.ppMoneyHook then
+			f.ppMoneyHook = true
+			f:HookScript("OnTextChanged", function() C_Timer.After(0, MoneySubject) end)
+		end
+		if f.GetChildren then for _, c in ipairs({ f:GetChildren() }) do Watch(c, depth + 1) end end
+	end
+	Watch(SendMailMoney, 0)
 	-- remember who you mail
 	if not Hook("SendMail", function(name) AddRecent(name) end) and C_Mail and C_Mail.SendMail then
 		hooksecurefunc(C_Mail, "SendMail", function(name) AddRecent(name) end)
