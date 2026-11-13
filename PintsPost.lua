@@ -413,6 +413,13 @@ local QUICK = {
 	{ "metal", "Ore, bars & stone", "Interface\\Icons\\INV_Ore_Copper_01", { 2770, 2771, 2772, 2775, 2776, 3858, 7911, 10620, 11370, 2840, 2841, 3576, 3575, 3577, 3859, 3860, 6037, 12359, 11371, 12655, 2835, 2836, 2838, 7912, 12365 }, { " Ore" } },
 	{ "enchant", "Enchanting", "Interface\\Icons\\INV_Enchant_DustStrange", { 10940, 11083, 11137, 11176, 16204, 10938, 10939, 10998, 11082, 11134, 11135, 11174, 11175, 16202, 16203, 10978, 11084, 11138, 11139, 11177, 11178, 14343, 14344, 20725 }, {} },
 	{ "elemental", "Elemental", "Interface\\Icons\\INV_Elemental_Primal_Fire", { 7067, 7068, 7069, 7070, 7075, 7076, 7077, 7078, 7079, 7080, 7081, 7082, 12803, 12808, 7972, 12809 }, {} },
+	-- fish: raw (to cook) and cooked, plus Fish Oil; by name too, for fish we don't list (WoW Forever's new ones)
+	{ "fish", "Fish", "Interface\\Icons\\INV_Misc_Fish_02", { 6291, 6303, 6289, 6317, 6361, 6308, 6362, 8365, 6358, 6359, 4603, 13754, 13755, 13756,
+		13758, 13759, 13760, 13888, 13889, 13893, 6522, 21071, 21153, 12238, 8959, 6290, 787, 4592, 4593, 4594, 5095, 6887, 8364, 13927, 13930,
+		13932, 13933, 13934, 13935, 8957, 21072, 21217, 17058 },
+		{ "Smallfish", "Mackerel", "Mud Snapper", "Catfish", "Rockscale Cod", "Albacore", "Yellowtail", "Head Trout", "Mightfish", "Sunscale Salmon",
+		"Whitescale Salmon", "Nightfin Snapper", "Firefin Snapper", "Blackmouth", "Redgill", "Summer Bass", "Winter Squid", "Sagefish",
+		"Halibut", "Grouper", "Loch Frenzy", "Deviate Fish" } },
 }
 local quickSet = {}
 for _, q in ipairs(QUICK) do quickSet[q[1]] = {}; for _, id in ipairs(q[4]) do quickSet[q[1]][id] = true end end

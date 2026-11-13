@@ -1,5 +1,8 @@
 Pint's Postal - Changelog
 
+v1.1.8
+- Quick Attach has a Fish button: every raw and cooked fish in your bags (and Fish Oil) in one click.
+
 v1.1.7
 - WoW Forever: sending money fills an empty Subject with the amount as you type it ("5 Silver"), and takes it out
   again if you clear the money.
