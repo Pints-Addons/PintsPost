@@ -1,5 +1,9 @@
 Pint's Postal - Changelog
 
+v1.1.9
+- Take all by kind: the same column of buttons beside the inbox (cloth, leather, herbs, ore, enchanting, elemental,
+  fish) takes every attachment of that kind out of all your mail, leaving the rest.
+
 v1.1.8
 - Quick Attach has a Fish button: every raw and cooked fish in your bags (and Fish Oil) in one click.
 

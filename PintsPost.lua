@@ -164,6 +164,7 @@ local startMoney
 local function Pop() ids[#queue] = nil; table.remove(queue) end
 local function Stop(msg)
 	running = false
+	PM.filter = nil
 	wipe(queue)
 	if PM.openBtn then PM.openBtn:SetText("Open All") end
 	if msg then Print(msg) end
@@ -189,6 +190,21 @@ function Step()
 	if i > NumItems() or not SameMail(i, ids[#queue]) then Pop(); return Step() end
 	local _, _, _, _, money, cod, _, itemCount = Header(i)
 	if (cod or 0) > 0 then Pop(); return Step() end
+	-- taking just one kind (Take all: cloth, fish...): only the attachments of that kind, and no money
+	if PM.filter then
+		if (itemCount or 0) > 0 then
+			for a = 1, ATTACHMENTS_MAX_RECEIVE or 16 do
+				local _, id = GetInboxItem(i, a)
+				local link = GetInboxItemLink and GetInboxItemLink(i, a)
+				if (id or link) and PM.Matches(PM.filter, id or (link and tonumber(link:match("item:(%d+)"))), link) then
+					if FreeSlots() <= (db.keepFree or 0) then skippedFull = skippedFull + 1; Pop(); return Step() end
+					TakeInboxItem(i, a); return Next()
+				end
+			end
+		end
+		Pop()
+		return Step()
+	end
 	if (money or 0) > 0 then TakeInboxMoney(i); return Next() end
 	if (itemCount or 0) > 0 then
 		if FreeSlots() <= (db.keepFree or 0) then skippedFull = skippedFull + 1; Pop(); return Step() end
@@ -429,6 +445,18 @@ local function Matches(q, id, link)
 	if not name then return false end
 	for _, w in ipairs(q[5]) do if name:find(w, 1, true) then return true end end
 	return false
+end
+PM.Matches = Matches
+-- the inbox side: every attachment of one kind out of all your mail
+function PM.QuickTake(q)
+	local list = {}
+	for i = 1, NumItems() do
+		local _, _, _, _, _, cod, _, itemCount = Header(i)
+		if (itemCount or 0) > 0 and (cod or 0) == 0 then list[#list + 1] = i end
+	end
+	if #list == 0 then Print("no mail with items."); return end
+	PM.filter = q
+	PM.Open(list, function() PM.filter = nil end)
 end
 function PM.QuickAttach(q)
 	local n = 0
@@ -706,6 +734,21 @@ local function BuildSend()
 		end)
 		b:SetScript("OnLeave", function() GameTooltip:Hide() end)
 		PM.quick[k] = b
+	end
+	-- the same column on the inbox: take every attachment of that kind out of all your mail
+	PM.quickIn = {}
+	for k, q in ipairs(QUICK) do
+		local b = CreateFrame("Button", nil, InboxFrame)
+		b:SetSize(30, 30); b:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", -2, -60 - (k - 1) * 34)
+		b:SetNormalTexture(q[3]); b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+		b:SetScript("OnClick", function() PM.QuickTake(q) end)
+		b:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Take all: " .. q[2])
+			GameTooltip:AddLine("Every " .. q[2]:lower() .. " attachment out of all your mail (click again to stop)", 1, 1, 1, true)
+			GameTooltip:Show()
+		end)
+		b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+		PM.quickIn[k] = b
 	end
 	-- money subject: the amount goes into an empty subject as you type it (and back out if you clear the money)
 	local auto
