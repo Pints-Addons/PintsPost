@@ -29,7 +29,7 @@ WHAT IT ADDS TO THE MAILBOX
   Takings        How much gold the mailbox gave you, printed when you close it.
 
 OPTIONS
-  The gear button at the top right of the mailbox, or /post. Every feature can be switched off, and the
+  The gear button beside the Send Mail tab, or /post. Every feature can be switched off, and the
   Open All speed and free bag slots to keep are adjustable.
   Using Postal? The options have a "Switch Postal off" button (or /post off-postal).
 

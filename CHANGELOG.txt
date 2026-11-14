@@ -1,5 +1,12 @@
 Pint's Postal - Changelog
 
+v1.1.10
+- Inbox: Take all gold, and Take all green, blue or purple gear - four more buttons under the Take all column.
+- Inbox: hovering a mail with several items lists every attachment with its icon and count (plus any money or C.O.D.)
+  - thanks Khurzog for the suggestion.
+- The settings gear moved to the tab row, beside the Send Mail tab, so it no longer sits on top of TradeSkillMaster's
+  toggle button - thanks Khurzog for spotting it.
+
 v1.1.9
 - Take all by kind: the same column of buttons beside the inbox (cloth, leather, herbs, ore, enchanting, elemental,
   fish) takes every attachment of that kind out of all your mail, leaving the rest.

@@ -9,7 +9,7 @@
 --   Money subject - the subject fills in with the gold amount if you leave it blank
 --   Trade block - trades and charter requests are turned away while the mailbox is open
 --   Takings     - how much gold the mailbox gave you, printed when you close it
--- Settings: the gear button at the top right of the mailbox, or /post.
+-- Settings: the gear button beside the mailbox's Send Mail tab, or /post.
 local ADDON = ...
 -- coins drawn with the money icons (WoW Forever's own coin text came out as bare digits: 6s 64c showed as "664")
 local GetCoinTextureString = function(v)
@@ -190,6 +190,12 @@ function Step()
 	if i > NumItems() or not SameMail(i, ids[#queue]) then Pop(); return Step() end
 	local _, _, _, _, money, cod, _, itemCount = Header(i)
 	if (cod or 0) > 0 then Pop(); return Step() end
+	-- just the gold (Take all: gold): the money out of every mail, the items left where they are
+	if PM.filter and PM.filter.money then
+		if (money or 0) > 0 then TakeInboxMoney(i); return Next() end
+		Pop()
+		return Step()
+	end
 	-- taking just one kind (Take all: cloth, fish...): only the attachments of that kind, and no money
 	if PM.filter then
 		if (itemCount or 0) > 0 then
@@ -439,7 +445,14 @@ local QUICK = {
 }
 local quickSet = {}
 for _, q in ipairs(QUICK) do quickSet[q[1]] = {}; for _, id in ipairs(q[4]) do quickSet[q[1]][id] = true end end
+local GII = (C_Item and C_Item.GetItemInfo) or GetItemInfo
 local function Matches(q, id, link)
+	-- gear of one quality (green, blue, purple): anything you can wear or wield
+	if q.quality then
+		local _, _, qual, _, _, _, _, _, equipLoc = GII(link or id)
+		return qual == q.quality and equipLoc ~= nil and equipLoc ~= "" and equipLoc ~= "INVTYPE_BAG"
+	end
+	if not quickSet[q[1]] then return false end
 	if quickSet[q[1]][id] then return true end
 	local name = link and link:match("%[(.-)%]")
 	if not name then return false end
@@ -451,10 +464,11 @@ PM.Matches = Matches
 function PM.QuickTake(q)
 	local list = {}
 	for i = 1, NumItems() do
-		local _, _, _, _, _, cod, _, itemCount = Header(i)
-		if (itemCount or 0) > 0 and (cod or 0) == 0 then list[#list + 1] = i end
+		local _, _, _, _, money, cod, _, itemCount = Header(i)
+		local has = q.money and (money or 0) > 0 or (not q.money and (itemCount or 0) > 0)
+		if has and (cod or 0) == 0 then list[#list + 1] = i end
 	end
-	if #list == 0 then Print("no mail with items."); return end
+	if #list == 0 then Print(q.money and "no mail with gold." or "no mail with items."); return end
 	PM.filter = q
 	PM.Open(list, function() PM.filter = nil end)
 end
@@ -633,6 +647,30 @@ local function BuildInbox()
 					end
 					if old then return old(self, ...) end
 				end)
+				-- every attachment in the mail's tooltip (the game only says "multiple items"): name, icon and how many
+				btn:HookScript("OnEnter", function(self)
+					local i = IndexOf(row)
+					local _, _, _, _, money, cod, _, itemCount = Header(i)
+					if not i or (itemCount or 0) < 2 then return end
+					local seen, order = {}, {}
+					for a = 1, ATTACHMENTS_MAX_RECEIVE or 16 do
+						local name, _, tex, count = GetInboxItem(i, a)
+						if name then
+							if not seen[name] then seen[name] = { tex = tex, n = 0 }; order[#order + 1] = name end
+							seen[name].n = seen[name].n + (count or 1)
+						end
+					end
+					if not GameTooltip:IsOwned(self) then GameTooltip:SetOwner(self, "ANCHOR_RIGHT") end
+					GameTooltip:AddLine(" ")
+					GameTooltip:AddLine(("%d attachments:"):format(itemCount), 1, 0.82, 0)
+					for _, name in ipairs(order) do
+						local e = seen[name]
+						GameTooltip:AddDoubleLine((e.tex and ("|T" .. e.tex .. ":14|t ") or "") .. name, "x" .. e.n, 1, 1, 1, 1, 1, 1)
+					end
+					if (money or 0) > 0 then GameTooltip:AddDoubleLine("Money", GetCoinTextureString(money), 1, 1, 1, 1, 1, 1) end
+					if (cod or 0) > 0 then GameTooltip:AddDoubleLine("|cffff4040C.O.D.|r", GetCoinTextureString(cod), 1, 1, 1, 1, 1, 1) end
+					GameTooltip:Show()
+				end)
 			end
 		end
 	end
@@ -749,6 +787,36 @@ local function BuildSend()
 		end)
 		b:SetScript("OnLeave", function() GameTooltip:Hide() end)
 		PM.quickIn[k] = b
+	end
+	-- and below them: the gold, and gear by quality
+	local EXTRA = {
+		{ "gold", "Gold", "Interface\\Icons\\INV_Misc_Coin_01", money = true },
+		{ "green", "Green gear", "Interface\\Icons\\INV_Chest_Chain_05", quality = 2 },
+		{ "blue", "Blue gear", "Interface\\Icons\\INV_Chest_Chain_05", quality = 3 },
+		{ "purple", "Purple gear", "Interface\\Icons\\INV_Chest_Chain_05", quality = 4 },
+	}
+	for k, q in ipairs(EXTRA) do
+		local n = #QUICK + k
+		local b = CreateFrame("Button", nil, InboxFrame)
+		b:SetSize(30, 30); b:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", -2, -60 - (n - 1) * 34 - 8)
+		b:SetNormalTexture(q[3]); b:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+		if q.quality then
+			-- a border in the quality's colour
+			local qc = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q.quality]
+			local r, g, bl = 1, 1, 1
+			if qc then r, g, bl = qc.r, qc.g, qc.b elseif GetItemQualityColor then r, g, bl = GetItemQualityColor(q.quality) end
+			local e = b:CreateTexture(nil, "OVERLAY"); e:SetTexture("Interface\\Buttons\\UI-ActionButton-Border"); e:SetBlendMode("ADD")
+			e:SetSize(54, 54); e:SetPoint("CENTER"); e:SetVertexColor(r, g, bl)
+		end
+		b:SetScript("OnClick", function() PM.QuickTake(q) end)
+		b:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Take all: " .. q[2])
+			GameTooltip:AddLine(q.money and "The gold out of all your mail, leaving the items (click again to stop)"
+				or ("Every " .. q[2]:lower() .. " attachment out of all your mail (click again to stop)"), 1, 1, 1, true)
+			GameTooltip:Show()
+		end)
+		b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+		PM.quickIn[n] = b
 	end
 	-- money subject: the amount goes into an empty subject as you type it (and back out if you clear the money)
 	local auto
@@ -943,11 +1011,12 @@ ev:SetScript("OnEvent", function(_, e, a1)
 				local ok, err = pcall(part[2])
 				if not ok then Print("couldn't set up the " .. part[1] .. " part of the mailbox: " .. tostring(err)) end
 			end
-			-- settings gear, beside the mailbox's close button
+			-- settings gear: on the tab row, right of the Send Mail tab (beside the close button it sat on top of
+			-- TradeSkillMaster's own toggle there)
 			local gear = CreateFrame("Button", nil, MailFrame)
-			local close = MailFrameCloseButton or MailFrame.CloseButton
-			gear:SetSize(24, 24); gear:SetFrameLevel(MailFrame:GetFrameLevel() + 10)
-			if close then gear:SetPoint("RIGHT", close, "LEFT", -4, 0) else gear:SetPoint("TOPRIGHT", MailFrame, "TOPRIGHT", -40, -2) end
+			local tab = MailFrameTab2 or _G.MailFrameTab2
+			gear:SetSize(22, 22); gear:SetFrameLevel(MailFrame:GetFrameLevel() + 10)
+			if tab then gear:SetPoint("LEFT", tab, "RIGHT", 6, 2) else gear:SetPoint("BOTTOMLEFT", MailFrame, "BOTTOMRIGHT", 4, 4) end
 			gear:SetNormalTexture("Interface\\Icons\\INV_Misc_Gear_01"); gear:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
 			gear:SetScript("OnClick", PM.ToggleOptions)
 			gear:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("Pint's Postal settings"); GameTooltip:Show() end)
