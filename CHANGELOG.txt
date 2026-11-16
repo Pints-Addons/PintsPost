@@ -1,5 +1,9 @@
 Pint's Postal - Changelog
 
+v1.1.11
+- WoW Forever: the reagent bag counts as one of your bags - Attach all, the attach-by-group buttons, Alt-click to
+  attach and the free-space count now find the items in it (they only looked in the backpack and four bags).
+
 v1.1.10
 - Inbox: Take all gold, and Take all green, blue or purple gear - four more buttons under the Take all column.
 - Inbox: hovering a mail with several items lists every attachment with its icon and count (plus any money or C.O.D.)

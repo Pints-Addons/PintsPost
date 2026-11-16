@@ -43,6 +43,9 @@ local function Key() return REALM .. "-" .. (FACTION or "?") end
 
 ---------------------------------------------------------------- bags
 local function Container() return C_Container or _G end
+-- your bags: the backpack and four bags, and (WoW Forever) the reagent bag
+local BAGS = { 0, 1, 2, 3, 4 }
+do local R = Enum and Enum.BagIndex and Enum.BagIndex.ReagentBag; if R then BAGS[#BAGS + 1] = R end end
 local function NumSlots(bag) return (C_Container and C_Container.GetContainerNumSlots or GetContainerNumSlots)(bag) or 0 end
 local function ItemAt(bag, slot)
 	if C_Container and C_Container.GetContainerItemInfo then
@@ -55,7 +58,7 @@ local function ItemAt(bag, slot)
 end
 local function FreeSlots()
 	local n = 0
-	for bag = 0, 4 do
+	for _, bag in ipairs(BAGS) do
 		local free, kind = (C_Container and C_Container.GetContainerNumFreeSlots or GetContainerNumFreeSlots)(bag)
 		if free and (kind == 0 or kind == nil) then n = n + free end
 	end
@@ -474,7 +477,7 @@ function PM.QuickTake(q)
 end
 function PM.QuickAttach(q)
 	local n = 0
-	for bag = 0, 4 do
+	for _, bag in ipairs(BAGS) do
 		for slot = 1, NumSlots(bag) do
 			local id, link, locked = ItemAt(bag, slot)
 			if id and not locked and Matches(q, id, link) then
@@ -534,7 +537,7 @@ function PM.Forward()
 		SendMailBodyEditBox:SetText(("---- Forwarded mail from %s ----\n%s"):format(sender, body))
 		local want = {}
 		for _, l in ipairs(links) do want[#want + 1] = l end
-		for bag = 0, 4 do
+		for _, bag in ipairs(BAGS) do
 			for slot = 1, NumSlots(bag) do
 				local _, link, locked = ItemAt(bag, slot)
 				for k, l in ipairs(want) do
@@ -892,7 +895,7 @@ end
 ---------------------------------------------------------------- Alt-click a bag item to attach it
 hooksecurefunc("HandleModifiedItemClick", function(link)
 	if not (db and db.express and IsAltKeyDown() and SendMailFrame and SendMailFrame:IsVisible() and link) then return end
-	for bag = 0, 4 do
+	for _, bag in ipairs(BAGS) do
 		for slot = 1, NumSlots(bag) do
 			local _, l, locked = ItemAt(bag, slot)
 			if l == link and not locked then Attach(bag, slot); return end
