@@ -1,5 +1,10 @@
 Pint's Postal - Changelog
 
+v1.1.12
+- Sending: a blank subject fills itself in from what you attach ("Runecloth x80", "Runecloth x80, Linen Cloth x20",
+  "... + 3 more"), with the gold after it when you send money too (or "C.O.D." and the amount). Type your own subject and
+  it's left alone. (Options: "Subject = items and gold if left blank".)
+
 v1.1.11
 - WoW Forever: the reagent bag counts as one of your bags - Attach all, the attach-by-group buttons, Alt-click to
   attach and the free-space count now find the items in it (they only looked in the backpack and four bags).

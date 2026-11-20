@@ -837,25 +837,59 @@ local function BuildSend()
 		c = Val(m.copper or m.CopperBox or _G[n .. "Copper"])
 		return g * 10000 + sv * 100 + c
 	end
+	local function CoinText(money)
+		if GetCoinText then return GetCoinText(money, " ") end
+		local g, sv, c = math.floor(money / 10000), math.floor(money / 100) % 100, money % 100
+		local t = {}
+		if g > 0 then t[#t + 1] = g .. " Gold" end
+		if sv > 0 then t[#t + 1] = sv .. " Silver" end
+		if c > 0 then t[#t + 1] = c .. " Copper" end
+		return table.concat(t, " ")
+	end
+	-- what's attached, as a subject: "Runecloth x80", "Runecloth x80, Linen Cloth x20", "Runecloth x80 + 3 more"
+	local function ItemText()
+		if not GetSendMailItem then return "" end
+		local order, total = {}, {}
+		for i = 1, ATTACHMENTS_MAX_SEND or 12 do
+			local nm, _, _, count = GetSendMailItem(i)
+			if type(nm) == "string" and nm ~= "" and not (issecretvalue and issecretvalue(nm)) then
+				if not total[nm] then order[#order + 1] = nm; total[nm] = 0 end
+				total[nm] = total[nm] + (tonumber(count) or 1)
+			end
+		end
+		local function One(nm) return total[nm] > 1 and (nm .. " x" .. total[nm]) or nm end
+		local text = ""
+		for k, nm in ipairs(order) do
+			local next = text == "" and One(nm) or (text .. ", " .. One(nm))
+			if #next > 48 then return text .. " + " .. (#order - k + 1) .. " more" end
+			text = next
+		end
+		return text
+	end
 	local function MoneySubject()
 		if not db.wire or not SendMailSubjectEditBox then return end
-		local money = Typed()
 		local subj = SendMailSubjectEditBox:GetText() or ""
-		if money > 0 and (subj == "" or subj == auto) then
-			local text
-			if GetCoinText then text = GetCoinText(money, " ")
-			else
-				local g, sv, c = math.floor(money / 10000), math.floor(money / 100) % 100, money % 100
-				local t = {}
-				if g > 0 then t[#t + 1] = g .. " Gold" end
-				if sv > 0 then t[#t + 1] = sv .. " Silver" end
-				if c > 0 then t[#t + 1] = c .. " Copper" end
-				text = table.concat(t, " ")
-			end
+		if subj ~= "" and subj ~= auto then return end          -- (you wrote your own subject: leave it)
+		local money = Typed()
+		local cod = SendMailCODButton and SendMailCODButton.GetChecked and SendMailCODButton:GetChecked()
+		local items = ItemText()
+		local text = items
+		if money > 0 then
+			local coin = (cod and "C.O.D. " or "") .. CoinText(money)
+			text = (text == "" and coin) or (text .. " - " .. coin)
+		end
+		if #text > 64 then text = text:sub(1, 64) end
+		if text ~= "" then
 			if subj ~= text then auto = text; SendMailSubjectEditBox:SetText(text) else auto = text end
-		elseif money == 0 and auto and subj == auto then
+		elseif auto and subj == auto then
 			auto = nil; SendMailSubjectEditBox:SetText("")
 		end
+	end
+	do  -- attaching or removing an item
+		local f = CreateFrame("Frame")
+		f:RegisterEvent("MAIL_SEND_INFO_UPDATE")
+		f:RegisterEvent("MAIL_SEND_SUCCESS")
+		f:SetScript("OnEvent", function(_, ev) if ev == "MAIL_SEND_SUCCESS" then auto = nil else C_Timer.After(0, MoneySubject) end end)
 	end
 	Hook("SendMailFrame_CanSend", MoneySubject)
 	-- (WoW Forever doesn't always run the game's check as you type: watch the money boxes themselves too)
@@ -950,7 +984,7 @@ function PM.ToggleOptions()
 		Check(opt, L, -300, "Block trades while at the mailbox", "tradeBlock")
 		head(L, -334, "Sending")
 		Check(opt, L, -352, "Quick-attach buttons", "quick")
-		Check(opt, L, -374, "Subject = gold amount if left blank", "wire")
+		Check(opt, L, -374, "Subject = items and gold if left blank", "wire")
 
 		head(R, -32, "Open All opens")
 		Check(opt, R, -50, "Auction cancelled", "f_cancelled"); Check(opt, R + 130, -50, "Auction expired", "f_expired")
